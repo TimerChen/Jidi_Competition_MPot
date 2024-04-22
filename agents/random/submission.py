@@ -27,7 +27,8 @@ def sample_single_dim(action_space_list_each, is_act_continuous):
         if action_space_list_each.__class__.__name__ == "Discrete":
             each = [0] * action_space_list_each.n
             idx = action_space_list_each.sample()
-            each[idx] = 1
+            # each[idx] = 1
+            each = idx
         elif action_space_list_each.__class__.__name__ == "MultiDiscreteParticle":
             each = []
             nvec = action_space_list_each.high - action_space_list_each.low + 1

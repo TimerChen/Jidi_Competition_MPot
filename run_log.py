@@ -69,7 +69,7 @@ def get_joint_action_eval(game, multi_part_agent_ids, policy_list, actions_space
             agent_id = agents_id_list[i]
             a_obs = all_observes[agent_id]
             each = eval(function_name)(a_obs, action_space_list[i], game.is_act_continuous)
-            joint_action.append(each)
+            joint_action.append(each[0])
     # print(joint_action)
     return joint_action
 
@@ -92,6 +92,7 @@ def run_game(g, env_name, multi_part_agent_ids, actions_spaces, policy_list, ren
     logger = get_logger(log_path, g.game_name, json_file=render_mode)
     set_seed(g, env_name)
 
+    # load all policy
     for i in range(len(policy_list)):
         if policy_list[i] not in get_valid_agents():
             raise Exception("agent {} not valid!".format(policy_list[i]))
@@ -118,18 +119,20 @@ def run_game(g, env_name, multi_part_agent_ids, actions_spaces, policy_list, ren
                  "seed": g.seed if hasattr(g, "seed") else None,
                  "map_size": g.map_size if hasattr(g, "map_size") else None}
 
+    # start run game
     steps = []
-    all_observes = g.all_observes
+    all_observes, _ = g.reset()
     while not g.is_terminal():
         step = "step%d" % g.step_cnt
         if g.step_cnt % 10 == 0:
             print(step)
 
-        if render_mode and hasattr(g, "env_core"):
-            if hasattr(g.env_core, "render"):
-                g.env_core.render()
-        elif render_mode and hasattr(g, 'render'):
-            g.render()
+        # no render
+        # if render_mode and hasattr(g, "env_core"):
+        #     if hasattr(g.env_core, "render"):
+        #         g.env_core.render()
+        # elif render_mode and hasattr(g, 'render'):
+        #     g.render()
 
         info_dict = {"time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))}
         joint_act = get_joint_action_eval(g, multi_part_agent_ids, policy_list, actions_spaces, all_observes)
@@ -162,18 +165,33 @@ def get_valid_agents():
 
 if __name__ == "__main__":
 
-    env_type = "overcookedai-integrated"
-    game = make(env_type, seed=None)
+    # env_type = "overcookedai-integrated"
+    ENV_NAMES = {
+        "pd_matrix": "prisoners_dilemma_in_the_matrix__repeated",
+        "cleanup": "cleanup",
+    }
+    
 
     render_mode = True
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--my_ai", default="random", help="random")
-    parser.add_argument("--opponent", default="random", help="random")
+    parser.add_argument("--game", default="pd_matrix", help="Game name from [pd_matrix, cleanup]")
+    parser.add_argument("--agents", default=["random", "random"], type=str, nargs="+", help="agent list")
+    # parser.add_argument("--opponent", default="random", help="random")
+    parser.add_argument("--scenario", default=-1, type=int, help="Scenario number, if -1, use no scenario.")
     args = parser.parse_args()
 
+    env_type = ENV_NAMES[args.game]
+    conf = {
+        "class_literal": "MPot_Integrated",
+        "senario": args.scenario,
+        "game_name": env_type,
+        "max_step": 100, # TODO: check this
+    }
+    game = make(env_type, seed=None, conf=conf)
+
     # policy_list = ["random"] * len(game.agent_nums)
-    policy_list = [args.opponent, args.my_ai] #["random"] * len(game.agent_nums), here we control agent 2 (green agent)
+    policy_list = args.agents #["random"] * len(game.agent_nums), here we control agent 2 (green agent)
 
     multi_part_agent_ids, actions_space = get_players_and_action_space_list(game)
 
