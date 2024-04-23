@@ -121,7 +121,7 @@ def run_game(g, env_name, multi_part_agent_ids, actions_spaces, policy_list, ren
 
     # start run game
     steps = []
-    all_observes, _ = g.reset()
+    all_observes, reward = g.reset()
     while not g.is_terminal():
         step = "step%d" % g.step_cnt
         if g.step_cnt % 10 == 0:
@@ -135,6 +135,8 @@ def run_game(g, env_name, multi_part_agent_ids, actions_spaces, policy_list, ren
         #     g.render()
 
         info_dict = {"time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))}
+        for i in range(len(all_observes)):
+            all_observes[i]["REWARD"] = reward[i]
         joint_act = get_joint_action_eval(g, multi_part_agent_ids, policy_list, actions_spaces, all_observes)
         all_observes, reward, done, info_before, info_after = g.step(joint_act)
 
@@ -176,8 +178,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--game", default="pd_matrix", help="Game name from [pd_matrix, cleanup]")
-    parser.add_argument("--agents", default=["random", "random"], type=str, nargs="+", help="agent list")
-    # parser.add_argument("--opponent", default="random", help="random")
+    # parser.add_argument("--agents", default=["random", "random"], type=str, nargs="+", help="agent list")
+    parser.add_argument("--my_ai", default="random", help="random")
+    parser.add_argument("--opponent", default="random", help="random")
     parser.add_argument("--scenario", default=-1, type=int, help="Scenario number, if -1, use no scenario.")
     args = parser.parse_args()
 
@@ -191,8 +194,8 @@ if __name__ == "__main__":
     game = make(env_type, seed=None, conf=conf)
 
     # policy_list = ["random"] * len(game.agent_nums)
-    policy_list = args.agents #["random"] * len(game.agent_nums), here we control agent 2 (green agent)
-
+    # policy_list = args.agents #["random"] * len(game.agent_nums), here we control agent 2 (green agent)
+    policy_list = [args.my_ai, args.opponent]
     multi_part_agent_ids, actions_space = get_players_and_action_space_list(game)
 
     run_game(game, env_type, multi_part_agent_ids, actions_space, policy_list, render_mode)
