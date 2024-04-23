@@ -6,7 +6,7 @@ import numpy as np
 import argparse
 import sys
 
-sys.path.append("./olympics_engine")
+# sys.path.append("./olympics_engine")
 
 from env.chooseenv import make
 from utils.get_logger import get_logger
@@ -186,7 +186,7 @@ if __name__ == "__main__":
         "class_literal": "MPot_Integrated",
         "senario": args.scenario,
         "game_name": env_type,
-        "max_step": 100, # TODO: check this
+        "max_step": 1000, # TODO: check this
     }
     game = make(env_type, seed=None, conf=conf)
 
