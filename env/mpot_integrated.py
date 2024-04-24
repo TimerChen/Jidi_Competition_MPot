@@ -65,11 +65,15 @@ class MPot_Integrated(Game, DictObservation):
         self.done = False
         self.step_cnt = 0
         self.max_step = int(conf["max_step"])
+        self.num_episode = int(conf["num_episode"])
         self.game_name = self.conf['game_name']
         
         self.debug_mode = self.conf.get("debug_mode", False)
 
-
+        self.scenario_pool = conf['scenarios']
+        self.current_scenario = 0
+        self.current_episode = 0
+        
         # self.game_pool = ['cramped_room_tomato','cramped_room_tomato',
         #                   'forced_coordination_tomato', 'forced_coordination_tomato',
         #                   'soup_coordination', 'soup_coordination']
@@ -81,7 +85,7 @@ class MPot_Integrated(Game, DictObservation):
         self.player_state = None
         self.player_reward = None
 
-        self.reset_map()
+        self.reset_map(init=True)
         # self.env.display_states(self.env.state)
 
         # TODO: What is Action.ALL_ACTIONS? rewrite action_space & obs_space
@@ -118,25 +122,28 @@ class MPot_Integrated(Game, DictObservation):
             
         return obs_space
 
-    def _state_filter(self, state):
+    def _state_filter(self, ts):
         """
             Remove global state from observation.
             Only keep it in debug mode.
         """
         if self.debug_mode:
-            return state.observation, state.reward
+            return ts.observation, ts.reward
         # delete specific keys
         new_state = []
 
-        for s in state.observation:
+        for s in ts.observation:
             if isinstance(s, immutabledict.immutabledict):
                 ss = dict(s)
                 if 'WORLD.RGB' in ss:
                     del ss['WORLD.RGB']
             else:
                 ss = s
+            
+            # add step_type here
+            ss["STEP_TYPE"] = ts.step_type
             new_state.append(ss)
-        return new_state, state.reward
+        return new_state, ts.reward
     
     def _create_scenario_game(self, scenario_id):
         name = f"{self.game_name}_{scenario_id}"
@@ -165,16 +172,30 @@ class MPot_Integrated(Game, DictObservation):
         env = factory.build(roles)
         return env, len(roles)
 
-    def reset_map(self):
+    def reset_get_scenario(self, init):
+        # if reset_map in __init__, do not count for episode.
+        if self.scenario_pool is None:
+            if not init:
+                self.current_episode += 1
+            return -1
+        elif init:
+            return self.scenario_pool[0]
+        
+        self.current_episode += 1
+        if self.current_episode > self.num_episode:
+            self.current_scenario += 1
+            self.current_episode = 1
+
+        print("reset scenario", self.current_scenario)
+        scenario = self.scenario_pool[self.current_scenario]
+        return scenario
+
+    def reset_map(self, init=False):
         """
             Create Game Environment 
         """
-        # map_name = self.game_pool.pop(0)
-        # base_mdp = OvercookedGridworld.from_layout_name(map_name)
-        # DEFAULT_ENV_PARAMS.update({"horizon":self.horizon})
-        # self.env = OvercookedEnv.from_mdp(base_mdp, **DEFAULT_ENV_PARAMS)
         # Create Game first
-        scenario_id = self.conf["senario"]
+        scenario_id = self.reset_get_scenario(init=init)
         if scenario_id == -1:
             self.env, self.n_player = self._create_substrate_game()
         else:
@@ -182,7 +203,8 @@ class MPot_Integrated(Game, DictObservation):
         self.current_game = self.game_name
         
         # self.player_state, self.player_reward = self._state_filter(self.env.reset())
-        state, reward = self._state_filter(self.env.reset())
+        timestep = self.env.reset()
+        state, reward = self._state_filter(timestep)
         # global_state = self.env.state.to_dict()
         # self.player_state = [global_state for _ in range(self.n_player)]            #share across agents
 
@@ -193,13 +215,14 @@ class MPot_Integrated(Game, DictObservation):
         print(f'Game: {self.game_name}, Senario:{scenario_id}, Player_num{self.n_player}')
         print(f'Obs Space: {self.env.observation_spec()[0]}, Act Space:{self.env.action_spec()[0]}')
         
-        return state, reward
+        return state, reward, timestep
         # self.all_observes = self.get_all_observes(new_map=True)
 
     @property
     def last_game(self):
-        # return (len(self.game_pool)==0)
-        return True
+        if len(self.scenario_pool) == 0:
+            return self.current_episode == self.num_episode
+        return self.current_episode == self.num_episode and self.current_scenario == len(self.scenario_pool)-1
 
     def reset(self):
         self.step_cnt = 0
@@ -210,7 +233,7 @@ class MPot_Integrated(Game, DictObservation):
         #                   'soup_coordination', 'soup_coordination']
         # self.agent_mapping = [[0,1],[1,0]]*3
         # self.player2agent_mapping = None
-        state, reward = self.reset_map()
+        state, reward, timestep = self.reset_map()
 
         # self.init_info = {"game_pool": self.game_pool, "agent_mapping": self.agent_mapping}
         self.won = {}
@@ -246,29 +269,31 @@ class MPot_Integrated(Game, DictObservation):
         return joint_action
 
     def step(self, joint_action):
-        if self.human_play:
-            joint_action = self.retrieve_human_play(joint_action)
 
         # joint_action_decode = self.decode(joint_action)
         # info_before = self.step_before_info(joint_action_decode)
-        
-        timestep = self.env.step(joint_action)
-        next_state, reward = self._state_filter(timestep)
+        map_done = self.step_cnt >= self.max_step
+        if map_done and not self.last_game:
+            next_state, reward, timestep = self.reset_map()
+            self.step_cnt = 0
+        else:
+            timestep = self.env.step(joint_action)
+            next_state, reward = self._state_filter(timestep)
         info_after = {
             "step_type": timestep.step_type,
             "discount": timestep.discount,
             "step": self.step_cnt,
+            "episode": self.current_episode,
+            "scenario": self.current_scenario,
+            "n_return": self.n_return
         }
         
 
         #TODO: to include value of ingradient
-        # if map_done and not self.last_game:
-        #     self.reset_map()
-        #     self.env.display_states(self.env.state)
-        #     info_after['new_map'] = True
+        if map_done and not self.last_game:
+            info_after['new_map'] = True
 
-        # else:
-        #     next_state = next_state.to_dict()
+            # next_state = next_state.to_dict()
         #     self.player_state = [next_state for _ in range(self.n_player)]
         #     # self.current_state = [next_state for _ in range(self.n_player)]
         #     self.all_observes = self.get_all_observes()
@@ -387,80 +412,3 @@ class MPot_Integrated(Game, DictObservation):
                 each['new_map'] = new_map
             all_observes.append(each)
         return all_observes
-
-    def render_in_console(self):
-        print(f'Map {6-len(self.game_pool)} t = {self.step_cnt+1}')
-        self.env.display_states(self.env.state)
-
-    def render_in_window(self):
-        if self.current_game == 'forced_coordination':
-            grid = GRID1.split('\n')
-            window_size = (375, 375)
-            if self.window_size != window_size:
-                self.window_size = window_size
-                self.background = pygame.display.set_mode(self.window_size)
-
-        elif self.current_game == 'coordination_ring':
-            grid = GRID2.split('\n')
-            window_size = (375, 375)
-            if self.window_size != window_size:
-                self.window_size = window_size
-                self.background = pygame.display.set_mode(self.window_size)
-
-        elif self.current_game == 'cramped_room':
-            grid = GRID3.split('\n')
-            window_size = (375, 375)
-            if self.window_size != window_size:
-                self.window_size = window_size
-                self.background = pygame.display.set_mode(self.window_size)
-
-        elif self.current_game == 'asymmetric_advantages_tomato':
-            grid = GRID4.split('\n')
-            window_size = (675, 375)
-            if self.window_size != window_size:
-                self.window_size = window_size
-                self.background = pygame.display.set_mode(self.window_size)
-
-        elif self.current_game == 'cramped_room_tomato':
-            grid = GRID5.split('\n')
-            window_size = (375, 300)
-            if self.window_size != window_size:
-                self.window_size = window_size
-                self.background = pygame.display.set_mode(self.window_size)
-
-        elif self.current_game == 'forced_coordination_tomato':
-            grid = GRID6.split('\n')
-            window_size = (375, 375)
-            if self.window_size != window_size:
-                self.window_size = window_size
-                self.background = pygame.display.set_mode(self.window_size)
-
-        elif self.current_game == 'soup_coordination':
-            grid = GRID7.split('\n')
-            window_size = (825, 375)
-            if self.window_size != window_size:
-                self.window_size = window_size
-                self.background = pygame.display.set_mode(self.window_size)
-
-        else:
-            raise NotImplementedError('Map name error')
-
-        sub_surface = self.vis.render_state(self.env.state, grid)
-        self.background.blit(sub_surface, (0,0))
-
-        surf, text = display_text(f'Step {self.step_cnt}, Map {6-len(self.game_pool)}, Agent idx {self.player2agent_mapping}', x=0, y=0, c='green')
-        self.background.blit(surf, text)
-
-        surf, text = display_text(f"Reward {self.n_return}", x=0, y=15, c='green')
-        self.background.blit(surf, text)
-
-        pygame.display.flip()
-        time.sleep(0.01)
-
-    def render(self):
-        if self.render_mode == 'console':
-            self.render_in_console()
-        elif self.render_mode == 'window':
-            self.render_in_window()
-        else:
-            raise NotImplementedError('Render mode not implemented')

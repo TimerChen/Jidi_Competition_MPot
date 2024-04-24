@@ -122,9 +122,13 @@ def run_game(g, env_name, multi_part_agent_ids, actions_spaces, policy_list, ren
     # start run game
     steps = []
     all_observes, reward = g.reset()
+    # print("step num")
+    gstep = 0
     while not g.is_terminal():
         step = "step%d" % g.step_cnt
-        if g.step_cnt % 10 == 0:
+        gstep += 1
+        # print("gstep", gstep)
+        if g.step_cnt % 100 == 0:
             print(step)
 
         # no render
@@ -150,6 +154,7 @@ def run_game(g, env_name, multi_part_agent_ids, actions_spaces, policy_list, ren
             info_dict["info_after"] = info_after
         steps.append(info_dict)
 
+    print("game end, step len", len(steps))
     game_info["steps"] = steps
     game_info["winner"] = g.check_win()
     game_info["winner_information"] = g.won
@@ -179,23 +184,31 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--game", default="pd_matrix", help="Game name from [pd_matrix, cleanup]")
     # parser.add_argument("--agents", default=["random", "random"], type=str, nargs="+", help="agent list")
-    parser.add_argument("--my_ai", default="random", help="random")
-    parser.add_argument("--opponent", default="random", help="random")
-    parser.add_argument("--scenario", default=-1, type=int, help="Scenario number, if -1, use no scenario.")
+    parser.add_argument("--my_ai", default="random", help="User agent to test.")
+    parser.add_argument("--opponent", default=None, help="Opponent player, if None, use fixed scenario to test.")
+    parser.add_argument("--max_step", default=500, help="Maximize time step of one episode")
+    parser.add_argument("--num_episode", default=1, help="Test episode number of each scenario.")
     args = parser.parse_args()
 
     env_type = ENV_NAMES[args.game]
+    if args.opponent is None:
+        scenarios = [0,1,2,3]
+        policy_list = [args.my_ai]
+    else:
+        scenarios = None
+        policy_list = [args.my_ai, args.opponent]
     conf = {
         "class_literal": "MPot_Integrated",
-        "senario": args.scenario,
+        "scenarios": scenarios,
         "game_name": env_type,
-        "max_step": 1000, # TODO: check this
+        "max_step": args.max_step, # TODO: check this
+        "num_episode": args.num_episode,
     }
     game = make(env_type, seed=None, conf=conf)
 
     # policy_list = ["random"] * len(game.agent_nums)
     # policy_list = args.agents #["random"] * len(game.agent_nums), here we control agent 2 (green agent)
-    policy_list = [args.my_ai, args.opponent]
+    
     multi_part_agent_ids, actions_space = get_players_and_action_space_list(game)
 
     run_game(game, env_type, multi_part_agent_ids, actions_space, policy_list, render_mode)

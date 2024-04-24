@@ -44,6 +44,7 @@ _IGNORE_KEYS = [
     "INTERACTION_INVENTORIES",
     "NUM_OTHERS_WHO_CLEANED_THIS_STEP",
     "REWARD",
+    "STEP_TYPE"
 ]
 
 def downsample_observation(array: np.ndarray, scaled) -> np.ndarray:
@@ -127,15 +128,22 @@ class Population:
         self._policies = {
             p_id: EvalPolicy(ckpt_paths, p_id, scale) for p_id in policy_ids
         }
+        self.ckpt_paths = ckpt_paths
+        self._policy_ids = policy_ids
+        self.scale = scale
 
         self.selected_ids = None
-        self.selected_poilces = None
+        self.selected_poilces = []
+
+    def _load_policy(self, pid):
+        return EvalPolicy(self.ckpt_paths, pid, self.scale)
 
     def prepare(self, multi_agent_ids, seed=None):
+        self.finish()
         if seed is not None:
             random.seed(seed)
         self.selected_ids = [
-            random.choice(list(self._policies.keys())) for _ in range(len(multi_agent_ids))
+            random.choice(self._policy_ids) for _ in range(len(multi_agent_ids))
         ]
         # logger.debug(f"Population.prepare: Select {self.selected_ids}")
         self.selected_poilces = [
@@ -153,7 +161,9 @@ class Population:
         # torch.cuda.empty_cache()
 
     def step(self, observations: List[Any], prev_rewards: List[Any]):
-        if self.selected_ids is None:
+        # if dm_env.StepType.FIRST
+        if observations[0]["STEP_TYPE"] == 0:
+            print("init policy")
             self.prepare([0])
         # assert len(observations) == len(self.selected_poilces), f"{len(observations)}  != {len(self.selected_poilces)}"
         actions = []
@@ -161,25 +171,6 @@ class Population:
             actions.append(pi.step(obs, prev_r))
 
         return actions[0]
-
-
-# def build_focal_population(
-#     ckpt_paths, policy_ids, scale
-# ) -> Iterator[Mapping[str, policy_lib.Policy]]:
-#   """Builds a population from the specified saved models.
-
-#   Args:
-#     ckpt_paths: path where agent policies are stored
-#     policy ids: policy ids for each agent
-
-#   Yields:
-#     A mapping from policy id to policy required to build focal population for evaluation.
-#   """
-#   with contextlib.ExitStack() as stack:
-#     yield {
-#         p_id: stack.enter_context(DownsamplingPolicyWraper(EvalPolicy(ckpt_paths, p_id), scale))
-#         for p_id in policy_ids
-#     }
 
 mypop = None
 
@@ -191,18 +182,8 @@ def init():
     config_file = f'{my_path}/params.json'
     f = open(config_file)
     configs = json.load(f)
-    # if args.eval_on_scenario:
-    #     scenario = args.scenario
-    # else:
-        # scenario = configs['env_config']['substrate']
     scaled = configs['env_config']['scaled']
 
-    # if args.create_videos:
-    #     video_dir = args.video_dir
-    # else:
-    #     video_dir = None
-        
-    # policies_path = args.policies_dir
     policies_path = os.path.join(my_path, "checkpoint_001600", "policies")
     roles = configs['env_config']['roles']
     policy_ids = [f"agent_{i}" for i in range(len(roles))]
@@ -211,16 +192,7 @@ def init():
         names_by_role[roles[i]].append(policy_ids[i])
 
     # Build population and evaluate
-    # with build_focal_population(policies_path, policy_ids, scaled) as population:
-    #     results = evaluation.evaluate_population(
-    #         population=population,
-    #         names_by_role=names_by_role,
-    #         scenario=scenario,
-    #         num_episodes=args.num_episodes,
-    #         video_root=video_dir)  
-    # return results, scenario
     global mypop
-    print("init mypop, before assign", mypop)
     # mypop = 1
     mypop = Population(policies_path, policy_ids, scaled)
     
@@ -229,6 +201,5 @@ init()
 
 def my_controller(observation, action_space, is_act_continuous=False):
     global mypop
-    # print("obs", observation)
     act = mypop.step([observation], [observation["REWARD"]])
     return [act]

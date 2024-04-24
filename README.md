@@ -41,18 +41,6 @@ The competition uses an integrated version of [MeltingPot games](https://github.
       TURN_RIGHT,
       INTERACT,
   )
-- Action set of clean_up:
-  ACTION_SET = (
-      NOOP,
-      FORWARD,
-      BACKWARD,
-      STEP_LEFT,
-      STEP_RIGHT,
-      TURN_LEFT,
-      TURN_RIGHT,
-      FIRE_ZAP,
-      FIRE_CLEAN
-  )
 
 
 ## Quick Start
@@ -68,12 +56,17 @@ Next, clone the repository and install the necessary dependencies:
 ```bash
 cd MPot_Competition
 pip install -r requirements.txt
+bash ./ray_patch.sh
 ```
 
 Finally, run the game by executing:
 ```bash
-python run_log.py
+# Example 1: beat with scenarios
+python run_log.py --my_ai "rl_agent"
+# Example 2: beat with another agent
+python run_log.py --my_ai "rl_agent" --opponent "random"
 ```
+
 
 
 ## Navigation
@@ -83,6 +76,7 @@ python run_log.py
 	|-- agents                              // Agents that act in the environment
 	|	|-- random                      // A random agent demo
 	|	|	|-- submission.py       // A ready-to-submit random agent file
+  |	|-- rl_agent                      // A trained agent demo
 	|-- env		                        // scripts for the environment
 	|	|-- mpot_integrated.py  // The environment wrapper		      
 	|-- utils               
