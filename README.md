@@ -76,7 +76,8 @@ python run_log.py --my_ai "rl_agent" --opponent "random"
 	|-- agents                              // Agents that act in the environment
 	|	|-- random                      // A random agent demo
 	|	|	|-- submission.py       // A ready-to-submit random agent file
-  |	|-- rl_agent                      // A trained agent demo
+    |	|-- rl_agent                      // A trained agent demo
+    |	|	|-- README.md               // For more details of rl_agent, see README.md
 	|-- env		                        // scripts for the environment
 	|	|-- mpot_integrated.py  // The environment wrapper		      
 	|-- utils               

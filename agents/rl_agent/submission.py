@@ -184,7 +184,8 @@ def init():
     configs = json.load(f)
     scaled = configs['env_config']['scaled']
 
-    policies_path = os.path.join(my_path, "checkpoint_001600", "policies")
+    # TODO: agent path at "pd_policy/checkpoint_000001/"
+    policies_path = os.path.join(my_path, "checkpoint_000001", "policies")
     roles = configs['env_config']['roles']
     policy_ids = [f"agent_{i}" for i in range(len(roles))]
     names_by_role = defaultdict(list)
