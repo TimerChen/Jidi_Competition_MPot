@@ -70,7 +70,10 @@ class MPot_Integrated(Game, DictObservation):
         
         self.debug_mode = self.conf.get("debug_mode", False)
 
-        self.scenario_pool = conf['scenarios']
+        if conf['scenarios'] is not None:
+            self.scenario_pool = conf['scenarios']
+        else:
+            self.scenario_pool = []
         self.current_scenario = 0
         self.current_episode = 0
         
@@ -174,7 +177,7 @@ class MPot_Integrated(Game, DictObservation):
 
     def reset_get_scenario(self, init):
         # if reset_map in __init__, do not count for episode.
-        if self.scenario_pool is None:
+        if len(self.scenario_pool) == 0:
             if not init:
                 self.current_episode += 1
             return -1
