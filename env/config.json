@@ -1,13 +1,20 @@
 {
-  "overcookedai-integrated": {
-    "class_literal": "OvercookedAI_Integrated",
-    "n_player": 2,
-    "max_step": 2400,
-    "game_name": "overcookedai-integrated",
-    "is_obs_continuous": false,
+  "prisoners_dilemma_in_the_matrix__repeated_scenarios": {
+    "class_literal": "MPot_Integrated",
+    "n_player": 1,
+    "scenarios":[0,1,2,3],
+    "game_name": "prisoners_dilemma_in_the_matrix__repeated",
+    "is_obs_continuous": true,
     "is_act_continuous": false,
-    "agent_nums": [1,1],
-    "obs_type": ["dict", "dict"],
-    "act_box": {"discrete_n": 6}
+    "max_step": 500,
+    "num_episode":1
+  },
+  "prisoners_dilemma_in_the_matrix__repeated": {
+    "class_literal": "MPot_Integrated",
+    "n_player": 2,
+    "scenarios":null,
+    "game_name": "prisoners_dilemma_in_the_matrix__repeated",
+    "max_step": 500,
+    "num_episode":1
   }
 }

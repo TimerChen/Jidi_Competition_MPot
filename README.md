@@ -17,7 +17,7 @@ The competition uses an integrated version of [MeltingPot games](https://github.
 
 
 ### O-Integrated II
-<img src='https://jidi-images.oss-cn-beijing.aliyuncs.com/jidi/env103.gif' width=400>
+<img src='https://jidi-images.oss-cn-beijing.aliyuncs.com/jidi/env104_105.gif' width=400>
 
 - We tested two env: clean_up and prisoners_dilemma_in_the_matrix:repeated.
 
@@ -61,8 +61,8 @@ bash ./ray_patch.sh
 
 Finally, run the game by executing:
 ```bash
-# Example 1: beat with scenarios
-python run_log.py --my_ai "rl_agent"
+# Example 1: beat with fixed_scenarios
+python run_log_fixed_scenario.py --my_ai "rl_agent"
 # Example 2: beat with another agent
 python run_log.py --my_ai "rl_agent" --opponent "random"
 ```
@@ -81,7 +81,8 @@ python run_log.py --my_ai "rl_agent" --opponent "random"
 	|-- env		                        // scripts for the environment
 	|	|-- mpot_integrated.py  // The environment wrapper		      
 	|-- utils               
-	|-- run_log.py		                // run the game with provided agents (same way we evaluate your submission in the backend server)
+	|-- run_log.py		                // run the game with provided agents with your opponents
+	|-- run_log_fixed_scenario.py		  // run the game with provided agents on fixed scenarios
 ```
 
 
@@ -90,8 +91,12 @@ python run_log.py --my_ai "rl_agent" --opponent "random"
 
 - You can train your own agents using any framework you like as long as using the provided environment wrapper. 
 
-- For your ready-to-submit agent, make sure you check it using the ``run_log.py`` scrips, which is exactly how we 
+- For your ready-to-submit agent, make sure you check it using the ``run_log.py`` and ``run_log_fixed_scenario.py`` scrips, which is exactly how we 
 evaluate your submission.
+
+- ``run_log_fixed_scenario.py`` takes agents from path `agents/` and run a game on 4 predefined test scenarios. For example:
+
+>python run_log.py --my_ai "random"  # or "rl_agent"
 
 - ``run_log.py`` takes agents from path `agents/` and run a game. For example:
 
@@ -99,11 +104,11 @@ evaluate your submission.
 
 set both agents as a random policy and run a game.
 
-- You can put your agents in the `agent/` folder and create a `submission.py` with a `my_controller` function 
+- You can put **your agents** in the `agent/` folder and create a `submission.py` with a `my_controller` function 
 in it. Then run the `run_log.py` to test:
 
 >python run_log.py --my_ai your_agent_name --opponent xxx
-
+Currently we provide you with examples about *random* and *rl_agent*.
 - If you pass the test, then you can submit it to the Jidi platform. You can make multiple submission and the previous submission will
 be overwritten.
 

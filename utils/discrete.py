@@ -3,25 +3,29 @@ from .space import Space
 
 
 class Discrete(Space):
-    r"""A discrete space in :math:`\{ 0, 1, \\dots, n-1 \}`. 
+    r"""A discrete space in :math:`\{ 0, 1, \\dots, n-1 \}`.
 
     Example::
 
         >>> Discrete(2)
 
     """
+
     def __init__(self, n):
         assert n >= 0
         self.n = n
         super(Discrete, self).__init__((), np.int64)
 
     def sample(self):
-        return self.np_random.randint(self.n)
+        # return self.np_random.randint(self.n)
+        return self.np_random.integers(0, self.n)
 
     def contains(self, x):
         if isinstance(x, int):
             as_int = x
-        elif isinstance(x, (np.generic, np.ndarray)) and (x.dtype.char in np.typecodes['AllInteger'] and x.shape == ()):
+        elif isinstance(x, (np.generic, np.ndarray)) and (
+            x.dtype.char in np.typecodes["AllInteger"] and x.shape == ()
+        ):
             as_int = int(x)
         else:
             return False

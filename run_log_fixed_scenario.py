@@ -184,16 +184,19 @@ def get_valid_agents():
 
 if __name__ == "__main__":
 
-    env_type = "prisoners_dilemma_in_the_matrix__repeated"
+    env_type = "prisoners_dilemma_in_the_matrix__repeated_scenarios"
     game = make(env_type, seed=None)
 
     render_mode = True
     parser = argparse.ArgumentParser()
-    parser.add_argument("--my_ai", default="random", help="random")
-    parser.add_argument("--opponent", default="random", help="random")
+    parser.add_argument(
+        "--my_ai",
+        default="random",
+        help="your agent name: subdirectory in `agents`, e.g. 'random', ['rl_agent']",
+    )
     args = parser.parse_args()
 
-    policy_list = [args.opponent, args.my_ai]
+    policy_list = [args.my_ai] * len(game.agent_nums)
 
     multi_part_agent_ids, actions_space = get_players_and_action_space_list(game)
     run_game(
