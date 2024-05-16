@@ -44,22 +44,27 @@ _IGNORE_KEYS = [
     "INTERACTION_INVENTORIES",
     "NUM_OTHERS_WHO_CLEANED_THIS_STEP",
     "REWARD",
-    "STEP_TYPE"
+    "STEP_TYPE",
 ]
+
 
 def downsample_observation(array: np.ndarray, scaled) -> np.ndarray:
     """Downsample image component of the observation.
     Args:
       array: RGB array of the observation provided by substrate
       scaled: Scale factor by which to downsaple the observation
-    
+
     Returns:
-      ndarray: downsampled observation  
+      ndarray: downsampled observation
     """
-    
+
     frame = cv2.resize(
-            array, (array.shape[0]//scaled, array.shape[1]//scaled), interpolation=cv2.INTER_AREA)
+        array,
+        (array.shape[0] // scaled, array.shape[1] // scaled),
+        interpolation=cv2.INTER_AREA,
+    )
     return frame
+
 
 class EvalPolicy(policy.Policy):
     """Loads the policies from  Policy checkpoints and removes unrequired observations
@@ -146,9 +151,7 @@ class Population:
             random.choice(self._policy_ids) for _ in range(len(multi_agent_ids))
         ]
         # logger.debug(f"Population.prepare: Select {self.selected_ids}")
-        self.selected_poilces = [
-            self._policies[p_id] for p_id in self.selected_ids
-        ]
+        self.selected_poilces = [self._policies[p_id] for p_id in self.selected_ids]
         for p in self.selected_poilces:
             p.initial_state()
 
@@ -157,36 +160,42 @@ class Population:
             p.close()
         del self.selected_poilces
         self.selected_ids = None
-        self.selected_poilces = None
+        self.selected_poilces = []
         # torch.cuda.empty_cache()
 
     def step(self, observations: List[Any], prev_rewards: List[Any]):
         # if dm_env.StepType.FIRST
         if observations[0]["STEP_TYPE"] == 0:
             print("init policy")
+            # XXX: Warning: rubbish
+            # only for pd_matrix substrate, and assume the focal pop in each scenario is one.
+            # only work for settings of fixed scenarios and competition
             self.prepare([0])
-        # assert len(observations) == len(self.selected_poilces), f"{len(observations)}  != {len(self.selected_poilces)}"
+        # assert len(observations) == len(self.selected_poilces), \
+        #     f"{len(observations)}  != {len(self.selected_poilces)}"
         actions = []
         for pi, obs, prev_r in zip(self.selected_poilces, observations, prev_rewards):
             actions.append(pi.step(obs, prev_r))
 
-        return actions[0]
+        return actions
+
 
 mypop = None
+
 
 def init():
     # ray.init()
     my_path = os.path.dirname(os.path.abspath(__file__))
     my_path = os.path.join(my_path, "pd_policy")
 
-    config_file = f'{my_path}/params.json'
+    config_file = f"{my_path}/params.json"
     f = open(config_file)
     configs = json.load(f)
-    scaled = configs['env_config']['scaled']
+    scaled = configs["env_config"]["scaled"]
 
     # TODO: agent path at "pd_policy/checkpoint_000001/"
     policies_path = os.path.join(my_path, "checkpoint_000001", "policies")
-    roles = configs['env_config']['roles']
+    roles = configs["env_config"]["roles"]
     policy_ids = [f"agent_{i}" for i in range(len(roles))]
     names_by_role = defaultdict(list)
     for i in range(len(policy_ids)):
@@ -196,11 +205,38 @@ def init():
     global mypop
     # mypop = 1
     mypop = Population(policies_path, policy_ids, scaled)
-    
+
 
 init()
 
-def my_controller(observation, action_space, is_act_continuous=False):
+
+def my_controller(
+    observation: Any,
+    action_space_list_each: List[Any],
+    is_act_continuous: bool = False,
+):
+    """
+    WARNING: KEEP AN EYE ON THIS FUNNY INPUT PARAMS!
+        IF YOU NEED TO WRITE RULES PLEASE MATCH THIS INPUT
+    observation: an state which in our project is a DICT
+    action_space_list_each: only one action space which is wrapped into a list, :(
+    """
     global mypop
-    act = mypop.step([observation], [observation["REWARD"]])
-    return [act]
+    # XXX: fix the mismatched type of obs and act_space
+    actions = mypop.step([observation], [observation["REWARD"]])
+    ret = []
+    assert len(actions) == len(action_space_list_each)
+    for act, act_space in zip(actions, action_space_list_each):
+        if is_act_continuous:
+            each = act
+        else:
+            if act_space.__class__.__name__ == "Discrete":
+                each = [0] * act_space.n
+                idx = act
+                each[idx] = 1
+            elif act_space.__class__.__name__ == "MultiDiscreteParticle":
+                raise not NotImplementedError
+            else:
+                raise not NotImplementedError
+        ret.append(each)
+    return ret
