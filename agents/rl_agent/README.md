@@ -16,9 +16,12 @@ Path tree of agents/rl_agent/pd_policy/:
 └── params.json         # hyperparameter of policies
 ```
 
+
 The policy can be obtained with ray script in Melting-Pot-Contest-2023.
 
 There is an example of path of saved model. 
 `Melting-Pot-Contest-2023/initialization_save_ckpt/torch/pd_matrix/PPO_meltingpot_2f131_00000_0_2024-04-25_16-02-38/`
 
 You need move this to `agents/rl_agent/pd_policy`.
+
+**Caution**: **The code will always load `checkpoint_000001`**, so your should first rename your checkpoint name in it.
