@@ -25,3 +25,4 @@ There is an example of path of saved model.
 You need move this to `agents/rl_agent/pd_policy`.
 
 **Caution**: **The code will always load `checkpoint_000001`**, so your should first rename your checkpoint name in it.
+You can change the fuction: init() [here](https://github.com/TimerChen/Jidi_Competition_MPot/blob/3786a06970c77ceaea5633a463d8cefdd9c2e5fe/agents/rl_agent/submission.py#L197) to load other checkpoints
